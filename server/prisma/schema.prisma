@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// Use `ObjectId` for MongoDB
+model Siswa {
+  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  nama           String
+  absen          Int
+  no_hp          String
+  password       String
+  email          String      @unique
+  role           Role
+  transaksiSiswa Transaksi[]
+}
+
+enum Role {
+  Admin
+  User
+}
+
+model Mapel {
+  id         String         @id @default(auto()) @map("_id") @db.ObjectId
+  nama_mapel String
+  pengajar   Guru           @relation(fields: [guruId], references: [id])
+  guruId     String         @db.ObjectId
+  dataTugas  TugasOnMapel[]
+  jadwals    Jadwal[]
+}
+
+model StatusPembayaran {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  status    Status      @default(BelumBayar)
+  transaksi Transaksi[] @relation
+}
+
+enum Status {
+  Lunas
+  BayarSetengah
+  BelumBayar
+}
+
+model Guru {
+  id      String   @id @default(auto()) @map("_id") @db.ObjectId
+  nama    String
+  mapels  Mapel[]
+  jadwals Jadwal[]
+}
+
+model Tugas {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  description   String
+  startTugas    DateTime
+  deadlineTugas DateTime
+  mapels        TugasOnMapel[]
+  jadwal        Jadwal         @relation("TugasJadwal", fields: [jadwalId], references: [id])
+  jadwalId      String         @db.ObjectId
+}
+
+model Transaksi {
+  id                 String            @id @default(auto()) @map("_id") @db.ObjectId
+  siswa              Siswa             @relation(fields: [siswaId], references: [id])
+  siswaId            String            @db.ObjectId
+  StatusPembayaran   StatusPembayaran? @relation(fields: [statusPembayaranId], references: [id])
+  statusPembayaranId String?           @db.ObjectId
+}
+
+model JamMengajar {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  hari        String
+  sesi        Int
+  jamMengajar String
+  jadwals     Jadwal[]
+}
+
+model Jadwal {
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  jamMengajar   JamMengajar @relation(fields: [jamMengajarId], references: [id])
+  jamMengajarId String      @db.ObjectId
+  guru          Guru        @relation(fields: [guruId], references: [id])
+  guruId        String      @db.ObjectId
+  mapel         Mapel       @relation(fields: [mapelId], references: [id])
+  mapelId       String      @db.ObjectId
+  tugas         Tugas[]     @relation("TugasJadwal")
+
+  // Computed fields, not stored
+  hari String @default("")
+  sesi Int    @default(0)
+}
+
+// Helper model to manage many-to-many relationships
+model TugasOnMapel {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  mapel   Mapel  @relation(fields: [mapelId], references: [id])
+  mapelId String @db.ObjectId
+  tugas   Tugas  @relation(fields: [tugasId], references: [id])
+  tugasId String @db.ObjectId
+}
